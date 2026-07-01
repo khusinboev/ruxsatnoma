@@ -1,0 +1,33 @@
+Loyiha boshqaruv buyruqlari (project root ichida ishlating)
+
+START
+1) Infrani ishga tushirish (yoki avvaldan bo'lsa start qilish):
+   docker start msertifikat_postgres msertifikat_redis || (
+     docker run -d --name msertifikat_postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=parol -e POSTGRES_DB=msertifikat -p 55432:5432 postgres:16-alpine &&
+     docker run -d --name msertifikat_redis -p 56379:6379 redis:7-alpine
+   )
+2) Migratsiya:
+   .venv311/bin/alembic upgrade head
+3) Botni ishga tushirish:
+   .venv311/bin/python -m bot.main
+
+STOP
+1) Botni to'xtatish:
+   pkill -f "python -m bot.main"
+2) Infra konteynerlarini to'xtatish:
+   docker stop msertifikat_postgres msertifikat_redis
+
+RESTART
+1) To'liq qayta ishga tushirish:
+   pkill -f "python -m bot.main" || true
+   docker restart msertifikat_postgres msertifikat_redis
+   .venv311/bin/alembic upgrade head
+   .venv311/bin/python -m bot.main
+
+Qo'shimcha tekshiruv
+- Bot jarayoni: pgrep -af "python -m bot.main"
+- Konteynerlar: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "msertifikat_postgres|msertifikat_redis"
+
+
+
+sshpass -p '8LKV2pNrl8gI7eMv' ssh -o StrictHostKeyChecking=no root@194.163.136.239 "cd /home/mser && git pull origin main && docker compose -f docker-compose.yml up -d --build bot && docker compose -f docker-compose.yml ps && docker logs --tail 100 milliy_sertificat_bot"
