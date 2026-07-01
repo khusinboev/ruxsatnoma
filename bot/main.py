@@ -7,7 +7,7 @@ from aiogram.exceptions import TelegramNetworkError
 
 from bot.config.settings import settings
 from bot.database.session import init_db
-from bot.handlers.user import start, common, subscription
+from bot.handlers.user import start, common, subscription, document
 from bot.handlers.admin import panel
 
 # Configure logging
@@ -38,6 +38,7 @@ async def main():
     dp.include_router(start.router)
     dp.include_router(subscription.router)
     dp.include_router(panel.router)
+    dp.include_router(document.router)
     dp.include_router(common.router)
     
     # Start bot

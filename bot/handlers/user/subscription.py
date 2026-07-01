@@ -20,7 +20,7 @@ async def check_subscription_callback(callback: CallbackQuery):
         await callback.answer("Obuna tasdiqlandi ✅", show_alert=True)
         await callback.message.edit_text("Rahmat! Obuna tasdiqlandi.")
         await callback.message.answer(
-            "Natijani ko'rish uchun tugmadan foydalaning:",
+            "Endi PDF (Qayd varaqasi) faylingizni qayta yuboring yoki saqlanganlarni ko'ring:",
             reply_markup=results_reply_keyboard(),
         )
         return

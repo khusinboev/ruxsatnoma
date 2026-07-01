@@ -1,5 +1,8 @@
 from datetime import datetime
-from sqlalchemy import Column, BigInteger, Integer, String, Boolean, Text, DateTime, ForeignKey, func
+from sqlalchemy import (
+    Column, BigInteger, Integer, String, Boolean, Text, DateTime,
+    ForeignKey, UniqueConstraint, func,
+)
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -27,6 +30,7 @@ class User(Base):
 
     broadcasts = relationship("Broadcast", back_populates="creator")
     broadcast_deliveries = relationship("BroadcastDelivery", back_populates="user")
+    permits = relationship("Permit", back_populates="user", cascade="all, delete-orphan")
 
 
 class Channel(Base):
@@ -76,3 +80,32 @@ class BroadcastDelivery(Base):
 
     broadcast = relationship("Broadcast", back_populates="deliveries")
     user = relationship("User", back_populates="broadcast_deliveries")
+
+
+class Permit(Base):
+    """Abituriyent ruxsatnomasi (PDF qayd varaqasi) dan o'qib olingan ma'lumotlar."""
+
+    __tablename__ = "permits"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.telegram_id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # PDF'dan o'qib olinadigan maydonlar
+    permit_id = Column(String(50), nullable=False, index=True)  # "ID" maydoni
+    full_name = Column(String(255), nullable=False)             # F.I.O.
+    passport_number = Column(String(50), nullable=False)        # Pasport (ID karta) seriya va raqami
+    jshshir = Column(String(20), nullable=False)                # JShShIR
+    birth_date = Column(String(20), nullable=False)             # Tug'ilgan sanasi
+    gender = Column(String(20), nullable=False)                 # Jinsi
+
+    # Telegram fayl ma'lumotlari (keyinchalik userga qayta yuborish/forward qilish uchun)
+    file_id = Column(String(255))
+    file_unique_id = Column(String(255))
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "permit_id", name="uq_permits_user_permit"),
+    )
+
+    user = relationship("User", back_populates="permits")

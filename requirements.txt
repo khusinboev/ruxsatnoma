@@ -15,5 +15,8 @@ python-dotenv==1.0.0
 pydantic==2.5.3
 pydantic-settings==2.1.0
 
+# PDF parsing (Abituriyent ruxsatnomasi qayd varag'ini o'qish uchun)
+pdfplumber==0.11.9
+
 # Utilities
 loguru==0.7.2

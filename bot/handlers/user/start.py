@@ -10,7 +10,7 @@ router = Router()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
-    """Handle /start command"""
+    """Handle /start command. Obuna bu yerda so'ralmaydi."""
     async with AsyncSessionLocal() as session:
         user_service = UserService(session)
         await user_service.get_or_create_user(
@@ -22,8 +22,7 @@ async def cmd_start(message: Message):
         )
 
     welcome_text = (
-        f"👋 Assalomu alaykum, {message.from_user.first_name}!\n\n"
-        f"Botimizga xush kelibsiz!\n"
-        f"Natijani ko'rish uchun tugmadan foydalaning."
+        "\"Abituriyent ruxsatnomasi\" ni olish uchun\n"
+        "Qayd varaqangizni PDF faylini yuboring 👇"
     )
     await message.answer(welcome_text, reply_markup=results_reply_keyboard())

@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = Field(default="production")
     AUTO_CREATE_SCHEMA: bool = Field(default=False)
 
+    # Abituriyent ruxsatnomasi (Permit) sozlamalari
+    MAX_PERMITS_PER_USER: int = Field(default=20, description="Har bir user saqlay oladigan maksimal ruxsatnomalar soni")
+    ORDER_NUMBER_OFFSET: int = Field(default=10000, description="'Buyurtma tartib raqami' uchun boshlang'ich offset")
+    MAX_PDF_SIZE_MB: int = Field(default=5, description="Qabul qilinadigan PDF faylning maksimal hajmi (MB)")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
