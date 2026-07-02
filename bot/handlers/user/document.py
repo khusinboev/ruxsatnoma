@@ -74,7 +74,7 @@ async def handle_permit_document(message: Message):
 
     text = (
         f"✅ <b>Tabriklaymiz!</b> : {permit.permit_id} ID raqamli abituriyent "
-        f"ruxsatnomasiga buyurtma qabul qilindi!\n\n"
+        f"qayd varaqasiga buyurtma qabul qilindi!\n\n"
         f"📄 Buyurtma tartib raqami: <b>{result.order_number}</b>\n\n"
         f"👤 F.I.Sh: {permit.full_name}\n\n"
         f"<i>Eslatma: Abituriyent ruxsatnomasi berilishi boshlanishi bilan ushbu bot "

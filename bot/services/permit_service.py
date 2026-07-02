@@ -37,7 +37,7 @@ class PermitService:
                 ok=False,
                 message=(
                     "❌ Fayldan kerakli ma'lumotlarni o'qib bo'lmadi.\n"
-                    "Iltimos, \"Abituriyent ruxsatnomasi\" PDF faylini (Qayd varaqangizni) yuboring."
+                    "Iltimos, \"Abituriyent qayd varaqasi\" PDF faylini yuboring."
                 ),
             )
 
@@ -46,7 +46,7 @@ class PermitService:
             return SaveResult(
                 ok=False,
                 message=(
-                    "ℹ️ Bu ruxsatnoma allaqachon saqlangan.\n"
+                    "ℹ️ Bu qayd varaqa allaqachon saqlangan.\n"
                     f"Buyurtma tartib raqami: {existing.order_number}"
                 ),
             )
@@ -56,7 +56,7 @@ class PermitService:
             return SaveResult(
                 ok=False,
                 message=(
-                    f"⚠️ Siz maksimal {settings.MAX_PERMITS_PER_USER} ta ruxsatnoma saqlay olasiz.\n"
+                    f"⚠️ Siz maksimal {settings.MAX_PERMITS_PER_USER} ta qayd varaqa saqlay olasiz.\n"
                     "Yangi qayd varaqasi qo'shish uchun avval eskilaridan birini o'chirtirish kerak bo'ladi."
                 ),
             )

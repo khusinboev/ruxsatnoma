@@ -30,12 +30,12 @@ async def show_results_links(message: Message):
 
     if not permits:
         await message.answer(
-            "Sizda hali saqlangan ruxsatnoma yo'q.\n"
-            "\"Abituriyent ruxsatnomasi\" PDF (Qayd varaqasi) faylini yuboring."
+            "Sizda hali saqlangan qayd varaqa yo'q.\n"
+            "\"Abituriyent qayd varaqasi\" PDF faylini yuboring."
         )
         return
 
-    lines = ["📋 <b>Saqlangan ruxsatnomalaringiz:</b>\n"]
+    lines = ["📋 <b>Saqlangan qayd varaqalaringiz:</b>\n"]
     for idx, permit in enumerate(permits, start=1):
         lines.append(f"{idx}. {permit.permit_id} - {permit.full_name}")
     lines.append(f"\nJami: {len(permits)}/{settings.MAX_PERMITS_PER_USER}")
@@ -47,6 +47,6 @@ async def show_results_links(message: Message):
 async def handle_text_message(message: Message):
     """Handle any plain text message from users"""
     await message.answer(
-        "📩 Iltimos, \"Abituriyent ruxsatnomasi\" PDF faylini yuboring yoki "
+        "📩 Iltimos, \"Abituriyent qayd varaqasi\" PDF faylini yuboring yoki "
         "\"📊 Saqlanganlarni ko'rish\" tugmasidan foydalaning."
     )

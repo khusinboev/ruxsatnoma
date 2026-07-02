@@ -22,7 +22,6 @@ async def cmd_start(message: Message):
         )
 
     welcome_text = (
-        "\"Abituriyent ruxsatnomasi\" ni olish uchun\n"
-        "Qayd varaqangizni PDF faylini yuboring 👇"
+        "\"Abituriyent qayd varaqasi\" PDF faylini yuboring 👇"
     )
     await message.answer(welcome_text, reply_markup=results_reply_keyboard())
