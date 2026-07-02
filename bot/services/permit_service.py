@@ -24,10 +24,6 @@ class PermitService:
         self.session = session
         self.repo = PermitRepository(session)
 
-    def order_number_for(self, permit: Permit) -> int:
-        """Foydalanuvchiga ko'rsatiladigan "Buyurtma tartib raqami"."""
-        return permit.id + settings.ORDER_NUMBER_OFFSET
-
     async def save_from_pdf(
         self,
         user_id: int,
@@ -51,7 +47,7 @@ class PermitService:
                 ok=False,
                 message=(
                     "ℹ️ Bu ruxsatnoma allaqachon saqlangan.\n"
-                    f"Buyurtma tartib raqami: {self.order_number_for(existing)}"
+                    f"Buyurtma tartib raqami: {existing.order_number}"
                 ),
             )
 
@@ -77,7 +73,7 @@ class PermitService:
             file_unique_id=file_unique_id,
         )
 
-        return SaveResult(ok=True, permit=permit, order_number=self.order_number_for(permit))
+        return SaveResult(ok=True, permit=permit, order_number=permit.order_number)
 
     async def list_user_permits(self, user_id: int) -> List[Permit]:
         return await self.repo.get_all_by_user(user_id)

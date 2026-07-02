@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import (
     Column, BigInteger, Integer, String, Boolean, Text, DateTime,
-    ForeignKey, UniqueConstraint, func,
+    ForeignKey, UniqueConstraint, func, text,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -89,6 +89,21 @@ class Permit(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey("users.telegram_id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Foydalanuvchiga ko'rsatiladigan "Buyurtma tartib raqami".
+    # Qiymat PostgreSQL'dagi permits_order_number_seq degan SEQUENCE orqali
+    # bazaning o'zi tomonidan avtomatik beriladi (server_default), shuning
+    # uchun bu yerda Python tomonida hech qanday qiymat berilmaydi.
+    # settings.ORDER_NUMBER_OFFSET faqat migratsiya birinchi marta
+    # ishga tushganda (sequence yaratilganda) ishlatiladi, keyin butunlay
+    # bazaning o'zi davom ettiradi — .env o'zgarishi buni endi ta'sir qilmaydi.
+    order_number = Column(
+        BigInteger,
+        nullable=False,
+        unique=True,
+        index=True,
+        server_default=text("nextval('permits_order_number_seq')"),
+    )
 
     # PDF'dan o'qib olinadigan maydonlar
     permit_id = Column(String(50), nullable=False, index=True)  # "ID" maydoni
