@@ -38,14 +38,7 @@ async def back_to_main_menu(message: Message, state: FSMContext):
 
 
 @router.message(F.text == "📁 Buyurtmalarim")
-async def show_saved_permits(message: Message, state: FSMContext):
-    current_state = await state.get_state()
-    if current_state != UserStates.order_section:
-        await message.answer(
-            "❗️ Bu bo'lim faqat \"🗂 Ruxsatnomaga buyurtma berish\" bo'limi ichida ishlaydi."
-        )
-        return
-
+async def show_saved_permits(message: Message):
     # Obuna faqat shu tugma bosilganda tekshiriladi
     async with AsyncSessionLocal() as session:
         sub_service = SubscriptionService(session, message.bot)
@@ -65,7 +58,7 @@ async def show_saved_permits(message: Message, state: FSMContext):
     if not permits:
         await message.answer(
             "Sizda hali saqlangan qayd varaqa yo'q.\n"
-            "\"Abituriyent qayd varaqasi\" PDF faylini yuboring."
+            "Buyurtma berish uchun \"🗂 Ruxsatnomaga buyurtma berish\" bo'limiga o'ting."
         )
         return
 
@@ -84,7 +77,7 @@ async def handle_text_message(message: Message, state: FSMContext):
     if current_state == UserStates.order_section:
         await message.answer(
             "📩 Iltimos, \"Abituriyent qayd varaqasi\" PDF faylini yuboring yoki "
-            "\"📁 Buyurtmalarim\" tugmasidan foydalaning."
+            "\"🔙 Orqaga\" tugmasi orqali qayting."
         )
         return
 
