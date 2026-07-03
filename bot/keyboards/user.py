@@ -1,14 +1,21 @@
-from aiogram.types import (
-    ReplyKeyboardMarkup,
-    KeyboardButton,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
-    WebAppInfo,
-)
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 
-def results_reply_keyboard() -> ReplyKeyboardMarkup:
+def main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="📊 Saqlanganlarni ko'rish")]],
+        keyboard=[
+            [KeyboardButton(text="➕ Abituriyent ruxsatnomasi")],
+            [KeyboardButton(text="🗂 Ruxsatnomaga buyurtma berish")],
+        ],
+        resize_keyboard=True,
+    )
+
+
+def order_section_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📁 Buyurtmalarim")],
+            [KeyboardButton(text="🔙 Orqaga")],
+        ],
         resize_keyboard=True,
     )

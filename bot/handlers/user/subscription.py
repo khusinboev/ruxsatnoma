@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery
 from bot.database.session import AsyncSessionLocal
 from bot.services.subscription_service import SubscriptionService
 from bot.keyboards.inline import get_subscription_keyboard
-from bot.keyboards.user import results_reply_keyboard
+from bot.keyboards.user import order_section_keyboard
 
 
 router = Router()
@@ -20,8 +20,9 @@ async def check_subscription_callback(callback: CallbackQuery):
         await callback.answer("Obuna tasdiqlandi ✅", show_alert=True)
         await callback.message.edit_text("Rahmat! Obuna tasdiqlandi.")
         await callback.message.answer(
-            "Endi PDF (Qayd varaqasi) faylingizni qayta yuboring yoki saqlanganlarni ko'ring:",
-            reply_markup=results_reply_keyboard(),
+            "Endi PDF (Qayd varaqasi) faylingizni qayta yuboring yoki "
+            "\"📁 Buyurtmalarim\" tugmasidan foydalaning:",
+            reply_markup=order_section_keyboard(),
         )
         return
 
