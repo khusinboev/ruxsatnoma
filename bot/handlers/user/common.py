@@ -72,7 +72,6 @@ async def show_saved_permits(message: Message, state: FSMContext):
     lines = ["📋 <b>Saqlangan qayd varaqalaringiz:</b>\n"]
     for idx, permit in enumerate(permits, start=1):
         lines.append(f"{idx}. {permit.permit_id} - {permit.full_name}")
-    lines.append(f"\nJami: {len(permits)}/{settings.MAX_PERMITS_PER_USER}")
 
     await message.answer("\n".join(lines))
 
