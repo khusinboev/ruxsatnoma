@@ -24,3 +24,21 @@ def get_subscription_keyboard(channels: List[Channel]) -> InlineKeyboardMarkup:
     ])
     
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_permit_download_keyboard() -> InlineKeyboardMarkup:
+    """Ruxsatnomani yuklab olish uchun havolali tugmalar"""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="📥 Iq test imtihon uchun ruxsatnoma",
+                url="https://my.uzbmb.uz/allow/iq-allow",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="📥 Kasbiy (ijodiy) imtihon uchun ruxsatnoma",
+                url="https://my.uzbmb.uz/allow/creative-allow",
+            )
+        ],
+    ])

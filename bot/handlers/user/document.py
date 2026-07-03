@@ -2,6 +2,7 @@ import logging
 from io import BytesIO
 
 from aiogram import Router, F
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.exceptions import TelegramBadRequest
 
@@ -10,14 +11,22 @@ from bot.database.session import AsyncSessionLocal
 from bot.keyboards.inline import get_subscription_keyboard
 from bot.services.subscription_service import SubscriptionService
 from bot.services.permit_service import PermitService
+from bot.states.user import UserStates
 
 router = Router()
 logger = logging.getLogger(__name__)
 
 
 @router.message(F.document)
-async def handle_permit_document(message: Message):
+async def handle_permit_document(message: Message, state: FSMContext):
     """User yuborgan PDF (Qayd varaqasi) faylini qayta ishlaydi."""
+    current_state = await state.get_state()
+    if current_state != UserStates.order_section:
+        await message.answer(
+            "❗️ Fayl yuborishdan oldin \"🗂 Ruxsatnomaga buyurtma berish\" bo'limiga o'ting."
+        )
+        return
+
     document = message.document
 
     is_pdf = (

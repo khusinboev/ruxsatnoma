@@ -1,17 +1,51 @@
 from aiogram import Router, F
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from bot.config.settings import settings
 from bot.database.session import AsyncSessionLocal
 from bot.services.subscription_service import SubscriptionService
 from bot.services.permit_service import PermitService
-from bot.keyboards.inline import get_subscription_keyboard
+from bot.keyboards.inline import get_subscription_keyboard, get_permit_download_keyboard
+from bot.keyboards.user import main_menu_keyboard, order_section_keyboard
+from bot.states.user import UserStates
+from bot.handlers.user.start import WELCOME_TEXT
 
 router = Router()
 
 
-@router.message(F.text == "📊 Saqlanganlarni ko'rish")
-async def show_results_links(message: Message):
+@router.message(F.text == "➕ Abituriyent ruxsatnomasi")
+async def show_permit_download(message: Message):
+    await message.answer(
+        "Ruxsatnomani yuklab olish uchun quyidagi tugmalardan birini tanlang:",
+        reply_markup=get_permit_download_keyboard(),
+    )
+
+
+@router.message(F.text == "🗂 Ruxsatnomaga buyurtma berish")
+async def enter_order_section(message: Message, state: FSMContext):
+    await state.set_state(UserStates.order_section)
+    await message.answer(
+        "\"Abituriyent qayd varaqasi\"ni PDF shaklida yuboring 👇",
+        reply_markup=order_section_keyboard(),
+    )
+
+
+@router.message(F.text == "🔙 Orqaga")
+async def back_to_main_menu(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer(WELCOME_TEXT, reply_markup=main_menu_keyboard())
+
+
+@router.message(F.text == "📁 Buyurtmalarim")
+async def show_saved_permits(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state != UserStates.order_section:
+        await message.answer(
+            "❗️ Bu bo'lim faqat \"🗂 Ruxsatnomaga buyurtma berish\" bo'limi ichida ishlaydi."
+        )
+        return
+
     # Obuna faqat shu tugma bosilganda tekshiriladi
     async with AsyncSessionLocal() as session:
         sub_service = SubscriptionService(session, message.bot)
@@ -44,9 +78,18 @@ async def show_results_links(message: Message):
 
 
 @router.message(F.text)
-async def handle_text_message(message: Message):
-    """Handle any plain text message from users"""
+async def handle_text_message(message: Message, state: FSMContext):
+    """Handle any plain text message from users that didn't match a known button"""
+    current_state = await state.get_state()
+
+    if current_state == UserStates.order_section:
+        await message.answer(
+            "📩 Iltimos, \"Abituriyent qayd varaqasi\" PDF faylini yuboring yoki "
+            "\"📁 Buyurtmalarim\" tugmasidan foydalaning."
+        )
+        return
+
     await message.answer(
-        "📩 Iltimos, \"Abituriyent qayd varaqasi\" PDF faylini yuboring yoki "
-        "\"📊 Saqlanganlarni ko'rish\" tugmasidan foydalaning."
+        "Iltimos, quyidagi bo'limlardan birini tanlang👇",
+        reply_markup=main_menu_keyboard(),
     )
