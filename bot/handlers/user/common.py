@@ -16,6 +16,18 @@ router = Router()
 
 @router.message(F.text == "➕ Abituriyent ruxsatnomasi")
 async def show_permit_download(message: Message):
+        # Obuna faqat shu tugma bosilganda tekshiriladi
+    async with AsyncSessionLocal() as session:
+        sub_service = SubscriptionService(session, message.bot)
+        not_subscribed = await sub_service.check_user_subscriptions(message.from_user.id)
+
+    if not_subscribed:
+        await message.answer(
+            "❗️ Botdan foydalanish uchun quyidagi kanallarga obuna bo'lishingiz kerak:",
+            reply_markup=get_subscription_keyboard(not_subscribed),
+        )
+        return
+    
     await message.answer(
         "Ruxsatnomani yuklab olish uchun quyidagi tugmalardan birini tanlang:",
         reply_markup=get_permit_download_keyboard(),
