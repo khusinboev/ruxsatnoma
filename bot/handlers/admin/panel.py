@@ -26,9 +26,64 @@ def is_admin(user_id: int) -> bool:
     return user_id in settings.ADMIN_USER_IDS
 
 
+# "/appadd <nom> (<havola>)" yoki "/appdel <nom> (<havola>)" formatini o'qiydi.
+# Nom ichida bo'shliq/emoji bo'lishi mumkin, havola oxiridagi qavs ichida keladi.
+_APP_BUTTON_ARGS_PATTERN = re.compile(r"^(.+?)\s*\(\s*(https?://\S+)\s*\)\s*$", re.DOTALL)
+
+
+def _command_args(text: str) -> str:
+    parts = (text or "").split(maxsplit=1)
+    return parts[1].strip() if len(parts) > 1 else ""
+
+
 @router.message(Command("developer"))
 async def developer_info(message: Message):
     await message.answer("Bot dasturchisi: @coder_admin_py")
+
+
+@router.message(Command("appadd"), F.from_user.func(lambda u: u and is_admin(u.id)))
+async def app_button_add(message: Message):
+    match = _APP_BUTTON_ARGS_PATTERN.match(_command_args(message.text or ""))
+    if not match:
+        await message.answer(
+            "Noto'g'ri format.\nMasalan:\n"
+            "/appadd 📥 Iq test imtihon uchun ruxsatnoma (https://my.uzbmb.uz/allow/iq-allow)"
+        )
+        return
+
+    button_text, button_url = match.group(1).strip(), match.group(2).strip()
+    async with AsyncSessionLocal() as session:
+        service = AdminService(session, message.bot)
+        ok, result = await service.add_app_button(button_text, button_url, message.from_user.id)
+
+    await message.answer(result)
+
+
+@router.message(Command("appdel"), F.from_user.func(lambda u: u and is_admin(u.id)))
+async def app_button_del(message: Message):
+    match = _APP_BUTTON_ARGS_PATTERN.match(_command_args(message.text or ""))
+    if not match:
+        await message.answer(
+            "Noto'g'ri format.\nMasalan:\n"
+            "/appdel 📥 Iq test imtihon uchun ruxsatnoma (https://my.uzbmb.uz/allow/iq-allow)"
+        )
+        return
+
+    button_text, button_url = match.group(1).strip(), match.group(2).strip()
+    async with AsyncSessionLocal() as session:
+        service = AdminService(session, message.bot)
+        ok, result = await service.remove_app_button(button_text, button_url)
+
+    await message.answer(result)
+
+
+@router.message(Command("applist"), F.from_user.func(lambda u: u and is_admin(u.id)))
+async def app_button_list(message: Message):
+    async with AsyncSessionLocal() as session:
+        service = AdminService(session, message.bot)
+        text = await service.list_app_buttons_text()
+
+    await message.answer(text)
 
 
 @router.message(Command("admin"), F.from_user.func(lambda u: u and is_admin(u.id)))

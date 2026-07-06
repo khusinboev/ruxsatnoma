@@ -6,6 +6,7 @@ from bot.config.settings import settings
 from bot.database.session import AsyncSessionLocal
 from bot.services.subscription_service import SubscriptionService
 from bot.services.permit_service import PermitService
+from bot.database.repositories.permit_app_button_repository import PermitAppButtonRepository
 from bot.keyboards.inline import get_subscription_keyboard, get_permit_download_keyboard
 from bot.keyboards.user import main_menu_keyboard, order_section_keyboard
 from bot.states.user import UserStates
@@ -27,10 +28,17 @@ async def show_permit_download(message: Message):
             reply_markup=get_subscription_keyboard(not_subscribed),
         )
         return
-    
+
+    async with AsyncSessionLocal() as session:
+        buttons = await PermitAppButtonRepository(session).get_all()
+
+    if not buttons:
+        await message.answer("Hozircha havolalar qo'shilmagan. Keyinroq qayta urinib ko'ring.")
+        return
+
     await message.answer(
         "Ruxsatnomani yuklab olish uchun quyidagi tugmalardan birini tanlang:",
-        reply_markup=get_permit_download_keyboard(),
+        reply_markup=get_permit_download_keyboard(buttons),
     )
 
 
