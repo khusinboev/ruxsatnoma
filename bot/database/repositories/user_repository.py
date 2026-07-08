@@ -43,21 +43,10 @@ class UserRepository:
         )
         return result.scalar_one()
 
-    async def get_all_active_user_ids(self, exclude_user_id: Optional[int] = None) -> List[int]:
-        query = select(User.telegram_id).where(User.is_active == True)
+    async def get_all_user_ids(self, exclude_user_id: Optional[int] = None) -> List[int]:
+        """Barcha ro'yxatdan o'tgan userlar (reklama har doim hammaga yuborilishi kerak)."""
+        query = select(User.telegram_id)
         if exclude_user_id is not None:
             query = query.where(User.telegram_id != exclude_user_id)
         result = await self.session.execute(query)
         return [row[0] for row in result.all()]
-
-    async def mark_user_blocked(self, telegram_id: int) -> None:
-        await self.session.execute(
-            update(User)
-            .where(User.telegram_id == telegram_id)
-            .values(
-                is_blocked=True,
-                is_active=False,
-                blocked_at=datetime.utcnow(),
-            )
-        )
-        await self.session.commit()

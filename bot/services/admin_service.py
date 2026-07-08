@@ -349,11 +349,9 @@ class AdminService:
                 wait_time = min(max(int(getattr(e, "retry_after", 1)), 1), self.MAX_RETRY_AFTER_WAIT)
                 await asyncio.sleep(wait_time)
             except TelegramForbiddenError:
-                try:
-                    await self.user_repo.mark_user_blocked(user_id)
-                except Exception:
-                    logger.exception("Broadcast: failed to mark user blocked user=%s", user_id)
-                    await self._safe_rollback()
+                # Bot bu userni o'zicha "bloklangan/passiv" deb belgilamaydi — faqat
+                # shu safargi yetkazishning muvaffaqiyatsiz bo'lganini qayd etamiz,
+                # keyingi reklamalarda ham bu user qatnashaveradi.
                 return False, "forbidden"
             except TelegramBadRequest as e:
                 return False, str(e)
@@ -421,7 +419,7 @@ class AdminService:
         if mode not in {"copy", "forward"}:
             raise ValueError("mode must be 'copy' or 'forward'")
 
-        user_ids = await self.user_repo.get_all_active_user_ids(exclude_user_id=admin_id)
+        user_ids = await self.user_repo.get_all_user_ids(exclude_user_id=admin_id)
         preview = (source_message.text or source_message.caption or "<media>")[:500]
         broadcast = await self.broadcast_repo.create_broadcast(
             created_by=admin_id,
