@@ -29,6 +29,13 @@ logger = logging.getLogger(__name__)
 class AdminService:
     """Business logic for admin panel"""
 
+    # Broadcast paytida bekor qilish holatini har userda emas, shu oralikda tekshiramiz —
+    # uzoq broadcastda minglab ortiqcha DB so'rovini (va uzilish xavfini) kamaytiradi.
+    CANCEL_CHECK_INTERVAL = 50
+    # TelegramRetryAfter juda katta qiymat qaytarsa ham, sequential broadcast bitta
+    # userda abadiy "qotib qolmasligi" uchun kutish vaqtini shu bilan chegaralaymiz.
+    MAX_RETRY_AFTER_WAIT = 120
+
     def __init__(self, session: AsyncSession, bot: Bot):
         self.session = session
         self.bot = bot
@@ -302,6 +309,102 @@ class AdminService:
             lines.append(f"{idx}. {b.button_text}\n   {b.button_url}")
         return "\n".join(lines)
 
+    async def _safe_rollback(self) -> None:
+        try:
+            await self.session.rollback()
+        except Exception:
+            logger.exception("Broadcast: session rollback failed")
+
+    async def _is_cancel_requested(self, broadcast_id: int) -> bool:
+        try:
+            status = await self.broadcast_repo.get_status(broadcast_id)
+            return status == "cancel_requested"
+        except Exception:
+            # DB bilan vaqtinchalik muammo broadcastni to'xtatmasligi kerak —
+            # shunchaki bekor qilishni bu safar tekshira olmadik deb hisoblaymiz.
+            logger.exception("Broadcast: failed to check cancel status (broadcast_id=%s)", broadcast_id)
+            return False
+
+    async def _send_broadcast_message(
+        self, mode: str, source_message: Message, user_id: int
+    ) -> tuple[bool, Optional[str]]:
+        """Bitta userga forward/copy qiladi. Hech qanday holatda exception otmaydi."""
+        error_text = "retries_exceeded"
+        for attempt in range(3):
+            try:
+                if mode == "forward":
+                    await self.bot.forward_message(
+                        chat_id=user_id,
+                        from_chat_id=source_message.chat.id,
+                        message_id=source_message.message_id,
+                    )
+                else:
+                    await self.bot.copy_message(
+                        chat_id=user_id,
+                        from_chat_id=source_message.chat.id,
+                        message_id=source_message.message_id,
+                    )
+                return True, None
+            except TelegramRetryAfter as e:
+                wait_time = min(max(int(getattr(e, "retry_after", 1)), 1), self.MAX_RETRY_AFTER_WAIT)
+                await asyncio.sleep(wait_time)
+            except TelegramForbiddenError:
+                try:
+                    await self.user_repo.mark_user_blocked(user_id)
+                except Exception:
+                    logger.exception("Broadcast: failed to mark user blocked user=%s", user_id)
+                    await self._safe_rollback()
+                return False, "forbidden"
+            except TelegramBadRequest as e:
+                return False, str(e)
+            except TelegramAPIError as e:
+                error_text = str(e)
+                await asyncio.sleep(1 + attempt)
+            except Exception:
+                # Aiogram exception ierarxiyasiga kirmaydigan har qanday kutilmagan
+                # xatolik (masalan tarmoq/DB bilan bog'liq) — butun broadcastni
+                # o'ldirmasligi uchun shu yerda ushlab, keyingi userga o'tamiz.
+                error_text = "unexpected_error"
+                logger.exception("Broadcast: unexpected error sending to user=%s", user_id)
+                await asyncio.sleep(1 + attempt)
+        return False, error_text
+
+    async def _journal_delivery(
+        self,
+        broadcast_id: int,
+        user_id: int,
+        delivered: bool,
+        error_text: Optional[str],
+        commit: bool,
+    ) -> None:
+        try:
+            await self.broadcast_repo.add_delivery(
+                broadcast_id, user_id, "delivered" if delivered else "failed", None if delivered else error_text
+            )
+            if commit:
+                await self.session.commit()
+        except Exception:
+            logger.exception(
+                "Broadcast: failed to journal delivery user=%s (broadcast_id=%s)", user_id, broadcast_id
+            )
+            await self._safe_rollback()
+
+    async def _finalize_broadcast(
+        self, broadcast_id: int, cancelled: bool, success: int, failed: int, total: int
+    ) -> str:
+        try:
+            if cancelled:
+                await self.broadcast_repo.mark_cancelled(broadcast_id, success, failed)
+                return "cancelled"
+            if failed == total and total > 0:
+                await self.broadcast_repo.fail_broadcast(broadcast_id, failed)
+                return "failed"
+            await self.broadcast_repo.finish_broadcast(broadcast_id, success, failed)
+            return "completed"
+        except Exception:
+            logger.exception("Broadcast: failed to persist final status (broadcast_id=%s)", broadcast_id)
+            return "unknown"
+
     async def run_broadcast(
         self,
         admin_id: int,
@@ -309,7 +412,12 @@ class AdminService:
         mode: str,
         progress_callback: Optional[Callable[[int, int, int, int], Awaitable[None]]] = None,
     ) -> dict:
-        """Run robust broadcast with retries and delivery journaling."""
+        """Run robust broadcast with retries and delivery journaling.
+
+        Butun sikl try/except bilan o'ralgan: har qanday kutilmagan xatolik
+        (masalan DB uzilishi) broadcastni jimgina "qotirib" qo'ymasligi, admin
+        doim yakuniy natija xabarini olishi kerak.
+        """
         if mode not in {"copy", "forward"}:
             raise ValueError("mode must be 'copy' or 'forward'")
 
@@ -326,86 +434,51 @@ class AdminService:
         failed = 0
         cancelled = False
         total = len(user_ids)
+        cancel_requested = False
 
-        for i, user_id in enumerate(user_ids, start=1):
-            status = await self.broadcast_repo.get_status(broadcast.id)
-            if status == "cancel_requested":
-                cancelled = True
-                break
+        try:
+            for i, user_id in enumerate(user_ids, start=1):
+                if i == 1 or i % self.CANCEL_CHECK_INTERVAL == 0:
+                    cancel_requested = await self._is_cancel_requested(broadcast.id)
 
-            delivered = False
-            error_text: Optional[str] = None
-
-            for attempt in range(3):
-                try:
-                    if mode == "forward":
-                        await self.bot.forward_message(
-                            chat_id=user_id,
-                            from_chat_id=source_message.chat.id,
-                            message_id=source_message.message_id,
-                        )
-                    else:
-                        await self.bot.copy_message(
-                            chat_id=user_id,
-                            from_chat_id=source_message.chat.id,
-                            message_id=source_message.message_id,
-                        )
-                    delivered = True
+                if cancel_requested:
+                    cancelled = True
                     break
-                except TelegramRetryAfter as e:
-                    wait_time = max(int(getattr(e, "retry_after", 1)), 1)
-                    await asyncio.sleep(wait_time)
-                except TelegramForbiddenError:
-                    error_text = "forbidden"
-                    await self.user_repo.mark_user_blocked(user_id)
-                    break
-                except TelegramBadRequest as e:
-                    error_text = str(e)
-                    break
-                except TelegramAPIError as e:
-                    error_text = str(e)
-                    await asyncio.sleep(1 + attempt)
 
-            if delivered:
-                success += 1
-                await self.broadcast_repo.add_delivery(broadcast.id, user_id, "delivered")
-            else:
-                failed += 1
-                await self.broadcast_repo.add_delivery(broadcast.id, user_id, "failed", error_text)
+                delivered, error_text = await self._send_broadcast_message(mode, source_message, user_id)
+                if delivered:
+                    success += 1
+                else:
+                    failed += 1
 
-            # Batch commit every 100 deliveries instead of per-user
-            if i % 100 == 0:
-                await self.session.commit()
+                await self._journal_delivery(
+                    broadcast.id, user_id, delivered, error_text, commit=(i % 100 == 0)
+                )
 
-            if progress_callback and (i % 10 == 0 or i == total):
-                await progress_callback(i, total, success, failed)
+                if progress_callback and (i % 10 == 0 or i == total):
+                    try:
+                        await progress_callback(i, total, success, failed)
+                    except Exception:
+                        logger.exception("Broadcast: progress callback failed (broadcast_id=%s)", broadcast.id)
 
-            # Soft rate-limit to avoid flood and keep bot stable on large sends.
-            if i % 20 == 0:
-                await asyncio.sleep(1)
+                # Soft rate-limit to avoid flood and keep bot stable on large sends.
+                if i % 20 == 0:
+                    await asyncio.sleep(1)
+        except Exception:
+            # So'nggi chora: kutilmagan xatolik sikldan tashqariga chiqib ketsa ham,
+            # hozirgacha yig'ilgan natija bilan yakunlaymiz — jarayon jimgina o'lib
+            # qolmasligi kerak.
+            logger.exception("Broadcast: unexpected fatal error, stopping early (broadcast_id=%s)", broadcast.id)
 
         processed = success + failed
 
-        # Flush any remaining uncommitted deliveries
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except Exception:
+            logger.exception("Broadcast: final commit failed (broadcast_id=%s)", broadcast.id)
+            await self._safe_rollback()
 
-        if cancelled:
-            await self.broadcast_repo.mark_cancelled(broadcast.id, success, failed)
-            return {
-                "broadcast_id": broadcast.id,
-                "status": "cancelled",
-                "total": total,
-                "processed": processed,
-                "success": success,
-                "failed": failed,
-            }
-
-        if failed == total and total > 0:
-            await self.broadcast_repo.fail_broadcast(broadcast.id, failed)
-            status_label = "failed"
-        else:
-            await self.broadcast_repo.finish_broadcast(broadcast.id, success, failed)
-            status_label = "completed"
+        status_label = await self._finalize_broadcast(broadcast.id, cancelled, success, failed, total)
 
         return {
             "broadcast_id": broadcast.id,
