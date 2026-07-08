@@ -20,6 +20,7 @@ from bot.database.models import User, Channel
 from bot.database.repositories.user_repository import UserRepository
 from bot.database.repositories.channel_repository import ChannelRepository
 from bot.database.repositories.broadcast_repository import BroadcastRepository
+from bot.database.repositories.permit_app_button_repository import PermitAppButtonRepository
 
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ class AdminService:
         self.user_repo = UserRepository(session)
         self.channel_repo = ChannelRepository(session)
         self.broadcast_repo = BroadcastRepository(session)
+        self.app_button_repo = PermitAppButtonRepository(session)
 
     async def _fetch_chat_via_http(self, chat_id: str) -> tuple[bool, dict | str]:
         """Fallback for Telegram API schema changes that aiogram can't decode yet."""
@@ -255,6 +257,57 @@ class AdminService:
         await self.session.delete(channel)
         await self.session.commit()
         return True, "Kanal muvaffaqiyatli o'chirildi."
+
+    async def add_app_button(
+        self,
+        button_text: str,
+        button_url: str,
+        added_by: int,
+    ) -> tuple[bool, str]:
+        raw_button_text = button_text.strip()
+        raw_button_url = button_url.strip()
+
+        if not raw_button_text:
+            return False, "Tugma nomi bo'sh bo'lmasligi kerak."
+
+        if not (raw_button_url.startswith("http://") or raw_button_url.startswith("https://")):
+            return False, "Tugma havolasi http:// yoki https:// bilan boshlanishi kerak."
+
+        exists = await self.app_button_repo.get_by_text_and_url(raw_button_text, raw_button_url)
+        if exists:
+            return False, "Bunday nom va havolali tugma allaqachon mavjud."
+
+        try:
+            await self.app_button_repo.create(
+                button_text=raw_button_text,
+                button_url=raw_button_url,
+                added_by=added_by,
+            )
+        except IntegrityError:
+            await self.session.rollback()
+            return False, "Bunday nom va havolali tugma allaqachon mavjud."
+        return True, f"Tugma qo'shildi: {raw_button_text} → {raw_button_url}"
+
+    async def remove_app_button(self, button_text: str, button_url: str) -> tuple[bool, str]:
+        raw_button_text = button_text.strip()
+        raw_button_url = button_url.strip()
+
+        button = await self.app_button_repo.get_by_text_and_url(raw_button_text, raw_button_url)
+        if not button:
+            return False, "Bunday nom va havolali tugma topilmadi."
+
+        await self.app_button_repo.delete(button)
+        return True, f"Tugma o'chirildi: {raw_button_text}"
+
+    async def list_app_buttons_text(self) -> str:
+        buttons = await self.app_button_repo.get_all()
+        if not buttons:
+            return "Hozircha havolali tugmalar yo'q."
+
+        lines = ["Havolali tugmalar:"]
+        for idx, b in enumerate(buttons, start=1):
+            lines.append(f"{idx}. {b.button_text}\n   {b.button_url}")
+        return "\n".join(lines)
 
     async def _safe_rollback(self) -> None:
         try:

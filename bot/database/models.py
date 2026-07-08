@@ -124,3 +124,21 @@ class Permit(Base):
     )
 
     user = relationship("User", back_populates="permits")
+
+
+class PermitAppButton(Base):
+    """Foydalanuvchiga "Abituriyent ruxsatnomasi" bo'limida ko'rsatiladigan
+    havolali tugmalar (admin tomonidan /appadd, /appdel orqali boshqariladi)."""
+
+    __tablename__ = "permit_app_buttons"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    button_text = Column(String(255), nullable=False)
+    button_url = Column(String(512), nullable=False)
+    priority = Column(Integer, default=0, nullable=False)
+    added_by = Column(BigInteger, ForeignKey("users.telegram_id", ondelete="SET NULL"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("button_text", "button_url", name="uq_permit_app_buttons_text_url"),
+    )

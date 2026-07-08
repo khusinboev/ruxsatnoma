@@ -6,6 +6,7 @@ from bot.config.settings import settings
 from bot.database.session import AsyncSessionLocal
 from bot.services.subscription_service import SubscriptionService
 from bot.services.permit_service import PermitService
+from bot.database.repositories.permit_app_button_repository import PermitAppButtonRepository
 from bot.keyboards.inline import get_subscription_keyboard, get_permit_download_keyboard
 from bot.keyboards.user import main_menu_keyboard, order_section_keyboard
 from bot.states.user import UserStates
@@ -16,9 +17,28 @@ router = Router()
 
 @router.message(F.text == "➕ Abituriyent ruxsatnomasi")
 async def show_permit_download(message: Message):
+        # Obuna faqat shu tugma bosilganda tekshiriladi
+    async with AsyncSessionLocal() as session:
+        sub_service = SubscriptionService(session, message.bot)
+        not_subscribed = await sub_service.check_user_subscriptions(message.from_user.id)
+
+    if not_subscribed:
+        await message.answer(
+            "❗️ Botdan foydalanish uchun quyidagi kanallarga obuna bo'lishingiz kerak:",
+            reply_markup=get_subscription_keyboard(not_subscribed),
+        )
+        return
+
+    async with AsyncSessionLocal() as session:
+        buttons = await PermitAppButtonRepository(session).get_all()
+
+    if not buttons:
+        await message.answer("Hozircha havolalar qo'shilmagan. Keyinroq qayta urinib ko'ring.")
+        return
+
     await message.answer(
         "Ruxsatnomani yuklab olish uchun quyidagi tugmalardan birini tanlang:",
-        reply_markup=get_permit_download_keyboard(),
+        reply_markup=get_permit_download_keyboard(buttons),
     )
 
 

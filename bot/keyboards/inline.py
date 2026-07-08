@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from typing import List
-from bot.database.models import Channel
+from bot.database.models import Channel, PermitAppButton
 
 
 def get_subscription_keyboard(channels: List[Channel]) -> InlineKeyboardMarkup:
@@ -26,19 +26,9 @@ def get_subscription_keyboard(channels: List[Channel]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def get_permit_download_keyboard() -> InlineKeyboardMarkup:
-    """Ruxsatnomani yuklab olish uchun havolali tugmalar"""
+def get_permit_download_keyboard(buttons: List[PermitAppButton]) -> InlineKeyboardMarkup:
+    """Ruxsatnomani yuklab olish uchun admin tomonidan qo'shilgan havolali tugmalar"""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="📥 Iq test imtihon uchun ruxsatnoma",
-                url="https://my.uzbmb.uz/allow/iq-allow",
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="📥 Kasbiy (ijodiy) imtihon uchun ruxsatnoma",
-                url="https://my.uzbmb.uz/allow/creative-allow",
-            )
-        ],
+        [InlineKeyboardButton(text=button.button_text, url=button.button_url)]
+        for button in buttons
     ])
