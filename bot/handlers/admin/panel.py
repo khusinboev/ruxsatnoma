@@ -206,16 +206,26 @@ async def broadcast_send(message: Message, state: FSMContext):
             # Message can be unchanged or no longer editable, safe to ignore.
             pass
 
-    async with AsyncSessionLocal() as session:
-        service = AdminService(session, message.bot)
-        result = await service.run_broadcast(
-            admin_id=message.from_user.id,
-            source_message=message,
-            mode=mode,
-            progress_callback=progress_callback,
-        )
-
     await state.clear()
+
+    try:
+        async with AsyncSessionLocal() as session:
+            service = AdminService(session, message.bot)
+            result = await service.run_broadcast(
+                admin_id=message.from_user.id,
+                source_message=message,
+                mode=mode,
+                progress_callback=progress_callback,
+            )
+    except Exception:
+        logger.exception("Broadcast: run_broadcast crashed before returning a result")
+        await message.answer(
+            "❌ Reklama yuborishda kutilmagan xatolik yuz berdi va jarayon to'xtatildi. "
+            "\"⛔ Broadcastni to'xtatish\" bo'limidan aktiv broadcastlarni tekshiring.",
+            reply_markup=admin_broadcast_keyboard(),
+        )
+        return
+
     await message.answer(
         (
             "Reklama yakunlandi.\n"
