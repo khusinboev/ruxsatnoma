@@ -5,8 +5,8 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="➕ Abituriyent ruxsatnomasi")],
-            [KeyboardButton(text="🗂 Ruxsatnomaga buyurtma berish")],
-            [KeyboardButton(text="📁 Buyurtmalarim")],
+            # [KeyboardButton(text="🗂 Ruxsatnomaga buyurtma berish")],
+            # [KeyboardButton(text="📁 Buyurtmalarim")],
 
         ],
         resize_keyboard=True,
